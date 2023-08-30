@@ -13,46 +13,24 @@ knitr::opts_chunk$set(
 )
 ```
 
-# mrJ2R
+# Codes Description
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of mrJ2R is to implement the proposed estimator to evaluate the average treatment effect (ATE) under jump-to-reference (J2R). 
+The goal of mrJ2R is to obtain the proposed estimators to evaluate the average treatment effect (ATE) under jump-to-reference (J2R) based on the paper **Multiply robust estimators in longitudinal studies with missing data under control-based imputation**.
 
-The file `sim_1time.R` 
-gives a way to generate the simulated dataset using the function `sim_dat(n, k, alpha, gamma)`, where $n$ 
+The file `sim_1time.R` contains four functions to get estimators under the cross-sectional study as follows.
 
-## Installation
+* `sim_dat(n, k, alpha, gamma)`: generate the simulated dataset;
+* `model_est(dat)`: estimate the ATE using eight proposed estimators, including the three triply robust estimators $\hat \tau_{\text{tr}}$, $\hat \tau_{\text{tr-N}}$, and $\hat \tau_{\text{tr-C}}$ and five simple estimators $\hat \tau_{\text{ps-rp}}$, $\hat \tau_{\text{ps-rp-N}}$, $\hat \tau_{\text{ps-om}}$, $\hat \tau_{\text{ps-om-N}}$, and $\hat \tau_{\text{rp-om}}$;
+* `nonpara_fn(dat, B, psrpom_est, psom_est, ps_est, rpom_est, rp_est, psrp_est, om_est, none_est)`: estimate the variation of the estimators using nonparmetric bootstrap, symmetric-t bootstrap, and bootstrap percentile;
+* `main(seed)`: return the point and variance estimation results. 
 
-You can install the development version of mrJ2R from [GitHub](https://github.com/) with:
 
-``` r
-# install.packages("devtools")
-devtools::install_github("siyi48/mrJ2R")
-```
+The file `sim_longi.R` contains four functions to get estimators under the longitudinal study as follows.
 
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-```{r example}
-library(mrJ2R)
-## basic example code
-```
-
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+* `sim_dat(n, k, alpha, gamma1, gamma2)`: generate the simulated dataset;
+* `model_est(dat)`: estimate the ATE using eight proposed estimators, including the three multiply robust estimators $\hat \tau_{\text{mr}}$, $\hat \tau_{\text{mr-N}}$, and $\hat \tau_{\text{mr-C}}$ and five simple estimators $\hat \tau_{\text{ps-rp}}$, $\hat \tau_{\text{ps-rp-N}}$, $\hat \tau_{\text{ps-om}}$, $\hat \tau_{\text{ps-om-N}}$, and $\hat \tau_{\text{rp-pm}}$;
+* `nonpara_fn(dat, B, point_est)`: estimate the variation of the estimators using nonparmetric bootstrap, symmetric-t bootstrap, and bootstrap percentile;
+* `main(seed)`: return the point and variance estimation results. 
