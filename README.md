@@ -11,34 +11,43 @@ average treatment effect (ATE) under jump-to-reference (J2R) based on
 the paper **Multiply robust estimators in longitudinal studies with
 missing data under control-based imputation**.
 
-The file `sim_1time.R` contains four functions to get estimators under
-the cross-sectional study as follows.
+## Installation
 
-- `sim_dat(n, k, alpha, gamma)`: generate the simulated dataset;
-- `model_est(dat)`: estimate the ATE using eight proposed estimators,
-  including the three triply robust estimators $\hat \tau_{\text{tr}}$,
-  $\hat \tau_{\text{tr-N}}$, and $\hat \tau_{\text{tr-C}}$ and five
-  simple estimators $\hat \tau_{\text{ps-rp}}$,
-  $\hat \tau_{\text{ps-rp-N}}$, $\hat \tau_{\text{ps-om}}$,
-  $\hat \tau_{\text{ps-om-N}}$, and $\hat \tau_{\text{rp-om}}$;
-- `nonpara_fn(dat, B, psrpom_est, psom_est, ps_est, rpom_est, rp_est, psrp_est, om_est, none_est)`:
-  estimate the variation of the estimators using nonparmetric bootstrap,
-  symmetric-t bootstrap, and bootstrap percentile;
-- `main(seed)`: return the point and variance estimation results.
+You can install the development version of rpsftmPDT from
+[GitHub](https://github.com/) with:
 
-The file `sim_longi.R` contains four functions to get estimators under
-the longitudinal study as follows.
+``` r
+# install.packages("devtools")
+devtools::install_github("siyi48/mrJ2R")
+#> Skipping install of 'mrJ2R' from a github remote, the SHA1 (1981fb41) has not changed since last install.
+#>   Use `force = TRUE` to force installation
+```
 
-- `sim_dat(n, k, alpha, gamma1, gamma2)`: generate the simulated
-  dataset;
-- `model_est(dat)`: estimate the ATE using eight proposed estimators,
-  including the three multiply robust estimators
-  $\hat \tau_{\text{mr}}$, $\hat \tau_{\text{mr-N}}$, and
-  $\hat \tau_{\text{mr-C}}$ and five simple estimators
-  $\hat \tau_{\text{ps-rp}}$, $\hat \tau_{\text{ps-rp-N}}$,
-  $\hat \tau_{\text{ps-om}}$, $\hat \tau_{\text{ps-om-N}}$, and
-  $\hat \tau_{\text{rp-pm}}$;
-- `nonpara_fn(dat, B, point_est)`: estimate the variation of the
-  estimators using nonparmetric bootstrap, symmetric-t bootstrap, and
-  bootstrap percentile;
-- `main(seed)`: return the point and variance estimation results.
+## Usage
+
+In the cross-sectional study, the main function `jtr.1time` provides the
+ATE estimator
+
+``` r
+library(mrJ2R)
+data <- dat1
+formula.om <- y ~ z1 + z2 + z3 + z4 + z5 + a +
+  a:(z1 + z2 + z3 + z4 + z5)
+formula.ps <- a ~ z1 + z2 + z3 + z4 + z5
+formula.rp <- r ~ z1 + z2 + z3 + z4 + z5 + a +
+  a:(z1 + z2 + z3 + z4 + z5)
+mat.cal <- data.matrix(data[,paste0("z", 1:5)]) # calibration matrix
+res.1time <- jtr.1time(formula.ps = formula.ps,
+                       formula.rp = formula.rp,
+                       formula.om = formula.om,
+                       data = data, mat.cal = mat.cal,
+                       type = c("tr", "tr.cal", "rpom"))
+res.1time
+#> $est
+#>           tr       tr.cal         rpom 
+#> 0.0001152698 0.0070087678 0.0089585440 
+#> 
+#> $ve
+#>          tr      tr.cal 
+#> 0.003680655 0.003028245
+```
