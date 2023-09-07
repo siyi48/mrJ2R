@@ -27,7 +27,7 @@ You can install the development version of rpsftmPDT from [GitHub](https://githu
 
 ```{r}
 # install.packages("devtools")
-# devtools::install_github("siyi48/mrJ2R")
+devtools::install_github("siyi48/mrJ2R")
 ```
 
 ## Usage
