@@ -7,17 +7,12 @@
 jtr.1time(formula.ps, formula.rp, formula.om, data, mat.cal = NULL, type)
 }
 \arguments{
-\item{formula.ps}{the matrix of all covariates included in the propensity
-score model, with the dimension: n*p1, n: the sample size, p1: dimension of the
-covariates.}
+\item{formula.ps}{a list of formulas for fitting the propensity score model}
 
-\item{formula.rp}{the matrix of all covariates included in the response status
-model, with the dimension: n*p2, n: the sample size, p2: dimension of the
-covariates.}
+\item{formula.rp}{a list of formulas for fitting the response probability
+model}
 
-\item{formula.om}{the matrix of all covariates included in the outcome mean
-model, with the dimension: n*p3, n: the sample size, p3: dimension of the
-covariates.}
+\item{formula.om}{a list of formulas for fitting the outcome mean model}
 
 \item{data}{the data that include the binary treatment assignment, where the
 active treatment group should be encoded as \code{1}, and the control group should be
@@ -31,7 +26,7 @@ as the original data.}
 \item{type}{the type of estimate the user want to obtain. Available types
 include:
 \itemize{
-\item \code{tr}: the triply robust estimator with calibration
+\item \code{tr}: the triply robust estimator
 \item \code{tr.norm}: the triply robust estimator with normalization
 \item \code{tr.cal}: the triply robust estimator with calibration
 \item \code{psom}: the ps-om estimator
@@ -45,10 +40,13 @@ include:
 The point estimate
 }
 \description{
-This function implements the proposed RPSFT + Cox method and returns an
-estimate of the treatment effect on the overall survival. It can be used if
-investigators have sufficient knowledge of the PDT effects and the survival
-time during the PDT period.
+This function derives the estimators for the average treatment effect (ATE)
+under jump-to-reference (J2R) in the cross-sectional study. The resulting ATE
+estimators consists of five simple estimators (rp-om, ps-om, ps-om-N, ps-rp,
+and ps-rp-N) and three triply robust estimators (tr, tr-N, and tr-C)
+motivated by the efficient influence function (EIF). Also, EIF-based
+variance estimators are provided for the three EIF-based estimators. The
+nuisance functions are estimated by parametric models.
 }
 \examples{
 data <- dat1
