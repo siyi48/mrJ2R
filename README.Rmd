@@ -32,7 +32,7 @@ devtools::install_github("siyi48/mrJ2R")
 
 ## Usage
 
-In the cross-sectional study, the main function `jtr.1time` provides the ATE estimator
+In the cross-sectional study, the main function `jtr.1time` provides the ATE estimator.
 
 ```{r}
 library(mrJ2R)
@@ -52,5 +52,34 @@ res.1time
 ```
 
 
+In the longitudinal study, the main function `jtr.longi` provides the ATE estimator.
+```{r}
+data <- dat2
+formula.om <- list()
+formula.om[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
+  x5 + gam::s(y1)
+formula.om[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
 
+formula.ps <- list()
+formula.ps[[2]] <- a ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
+  x5  + gam::s(y1)
+formula.ps[[1]] <- a ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
 
+formula.rp <- list()
+formula.rp[[2]] <- r2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
+  x5 + gam::s(y1)
+formula.rp[[1]] <- r1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
+
+formula.pm <- list()
+formula.pm[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
+  x5 + gam::s(y1)
+formula.pm[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
+
+res.longi <- jtr.longi(formula.ps = formula.ps,
+                       formula.rp = formula.rp,
+                       formula.om = formula.om,
+                       formula.pm = formula.pm,
+                       data = data,
+                       type = c("mr", "mr.norm", "rppm"))
+res.longi
+```
