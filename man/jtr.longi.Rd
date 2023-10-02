@@ -9,8 +9,8 @@ jtr.longi(
   formula.rp,
   formula.om,
   formula.pm,
+  list.cal = NULL,
   data,
-  mat.cal = NULL,
   type
 )
 }
@@ -27,20 +27,24 @@ Users can input any variables in the data as the response variables, since
 the response variables in the pattern mean formulas are recalculated by the
 estimated outcome mean and response probability.}
 
+\item{list.cal}{a list of matrices for calibration. Each matrix in \code{list.cal}
+should have the same number of rows with the same subject orders. The first
+matrix in the list should include the variables that may affect the treatment
+assignment, the latter matrices in the list should include the variables that
+may affect the response status in a time order.}
+
 \item{data}{the data that include the binary treatment assignment, where the
 active treatment group should be encoded as \code{1}, and the control group should be
 encoded as \code{0}, the binary response status, where \code{1} indicates the subject
 is observed and \code{0} indicates the subject is missing, the outcome, and the
 fully observed baseline covariates.}
 
-\item{mat.cal}{the matrix for calibration, should have the same subject order
-as the original data.}
-
 \item{type}{the type of estimate the user want to obtain. Available types
 include:
 \itemize{
 \item \code{mr}: the multiply robust estimator
-\item \code{mr.norm}: the triply robust estimator with normalization
+\item \code{mr.norm}: the multiply robust estimator with normalization
+\item \code{mr.cal}: the multiply robust estimator with calibration
 \item \code{psom}: the ps-om estimator
 \item \code{psom.norm}: the ps-om estimator with normalization
 \item \code{psrp}: the ps-rp estimator
@@ -79,12 +83,26 @@ formula.pm <- list()
 formula.pm[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
 x5 + gam::s(y1)
 formula.pm[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
-mat.cal <- data.matrix(data[,paste0("z", 1:5)]) # calibration matrix
+k <- 5
+inter_mat <- matrix(0, nrow = nrow(data), ncol = choose(k-1, 2)+k-1)
+count <- 1
+for(i in 1:(k-1)){
+  for(j in i:(k-1)){
+    inter_mat[,count] <- data[,k+i]*data[,k+j]
+    count <- count + 1
+  }
+}
+list.cal <- list()
+list.cal[[1]] <- cbind(data.matrix(data[,k + 1:k]), inter_mat) # A
+list.cal[[2]] <- cbind(cbind(list.cal[[1]], data$a)) # R1
+list.cal[[3]] <- cbind(list.cal[[2]], data$y1,
+                       data.matrix(data[,k + 1:(k-1)])*data$y1, data$y1^2) # R2
 res.longi <- jtr.longi(formula.ps = formula.ps,
                        formula.rp = formula.rp,
                        formula.om = formula.om,
                        formula.pm = formula.om,
+                       list.cal = list.cal,
                        data = data,
-                       type = c("mr", "mr.norm", "rppm"))
+                       type = c("mr", "mr.cal", "rppm"))
 res.longi
 }

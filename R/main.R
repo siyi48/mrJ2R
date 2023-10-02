@@ -271,8 +271,11 @@ jtr.1time <- function(formula.ps, formula.rp, formula.om, data,
 #' Users can input any variables in the data as the response variables, since
 #' the response variables in the pattern mean formulas are recalculated by the
 #' estimated outcome mean and response probability.
-#' @param mat.cal the matrix for calibration, should have the same subject order
-#' as the original data.
+#' @param list.cal a list of matrices for calibration. Each matrix in `list.cal`
+#' should have the same number of rows with the same subject orders. The first
+#' matrix in the list should include the variables that may affect the treatment
+#' assignment, the latter matrices in the list should include the variables that
+#' may affect the response status in a time order.
 #' @param data the data that include the binary treatment assignment, where the
 #' active treatment group should be encoded as `1`, and the control group should be
 #' encoded as `0`, the binary response status, where `1` indicates the subject
@@ -282,7 +285,8 @@ jtr.1time <- function(formula.ps, formula.rp, formula.om, data,
 #' include:
 #' \itemize{
 #' \item `mr`: the multiply robust estimator
-#' \item `mr.norm`: the triply robust estimator with normalization
+#' \item `mr.norm`: the multiply robust estimator with normalization
+#' \item `mr.cal`: the multiply robust estimator with calibration
 #' \item `psom`: the ps-om estimator
 #' \item `psom.norm`: the ps-om estimator with normalization
 #' \item `psrp`: the ps-rp estimator
@@ -312,16 +316,31 @@ jtr.1time <- function(formula.ps, formula.rp, formula.om, data,
 #' formula.pm[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
 #' x5 + gam::s(y1)
 #' formula.pm[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
-#' mat.cal <- data.matrix(data[,paste0("z", 1:5)]) # calibration matrix
+#' k <- 5
+#' inter_mat <- matrix(0, nrow = nrow(data), ncol = choose(k-1, 2)+k-1)
+#' count <- 1
+#' for(i in 1:(k-1)){
+#'   for(j in i:(k-1)){
+#'     inter_mat[,count] <- data[,k+i]*data[,k+j]
+#'     count <- count + 1
+#'   }
+#' }
+#' list.cal <- list()
+#' list.cal[[1]] <- cbind(data.matrix(data[,k + 1:k]), inter_mat) # A
+#' list.cal[[2]] <- cbind(cbind(list.cal[[1]], data$a)) # R1
+#' list.cal[[3]] <- cbind(list.cal[[2]], data$y1,
+#'                        data.matrix(data[,k + 1:(k-1)])*data$y1, data$y1^2) # R2
 #' res.longi <- jtr.longi(formula.ps = formula.ps,
 #'                        formula.rp = formula.rp,
 #'                        formula.om = formula.om,
 #'                        formula.pm = formula.om,
+#'                        list.cal = list.cal,
 #'                        data = data,
-#'                        type = c("mr", "mr.norm", "rppm"))
+#'                        type = c("mr", "mr.cal", "rppm"))
 #' res.longi
 jtr.longi <- function(formula.ps, formula.rp, formula.om, formula.pm,
-                      data, mat.cal = NULL, type){
+                      list.cal = NULL,
+                      data, type){
   t.time <- length(formula.om)
   trt.name <- as.character(formula.ps[[1]][2])
   rp.name <- as.character(sapply(formula.rp, function(x) x[[2]]))
@@ -722,6 +741,71 @@ jtr.longi <- function(formula.ps, formula.rp, formula.om, formula.pm,
                 var_value = var_value))
   }
 
+  # mr_weight_est(w.cal, pm.a1, mu.a0.total,pi.a0.total, pi.a1.total, ps.ratio)
+  mr_weight_est <- function(w.cal, pm.a1, mu.a0.total,
+                            pi.a0.total, pi.a1.total, ps.ratio){
+    y.imp <- r.mat[,ncol(r.mat)]*data[,y.name[t.time]]
+    y.imp <- ifelse(is.na(y.imp), 0, y.imp)
+    temp.value <- rep(0, n)
+    for(k in t.time:1){
+      y.temp <- rep(0, n)
+      y.temp[r.mat[,t.time - k + 1] == 1] <- mu.a0.total[[k]]
+      temp.value <- r.mat[,t.time - k + 1]*(1 - r.mat[,t.time - k + 2])*y.temp + temp.value
+    }
+    y.imp <- y.imp + temp.value
+
+    second_part1 <- pi.a1.total[[t.time]]*(rowSums(pm.a1[[t.time]]) -
+                                            mu.a0.total[[t.time]]) + mu.a0.total[[t.time]]
+    first_part <- w.cal[,1]*(y.imp - second_part1) # sum_part1 = sum(first_part)
+    second_part <- second_part1 - mu.a0.total[[t.time]]
+
+    # sum_part2 = mean(second_part)
+
+    n.complete <- sum(r.mat[,t.time+1])
+    index.complete <- which(r.mat[,t.time+1] == 1)
+
+    pi.a0.obs <- matrix(0, nrow = n, ncol = t.time)
+    pi.a1.obs <- matrix(0, nrow = n, ncol = t.time)
+    ps.ratio.obs <- matrix(0, nrow = n, ncol = t.time)
+    mu.a0.obs <- matrix(0, nrow = n, ncol = t.time+1)
+    for(k in t.time:1){
+      index <- which(r.mat[,k] == 1)
+      pi.a0.obs[index,k] <- pi.a0.total[[t.time - k + 1]]
+      pi.a1.obs[index,k] <- pi.a1.total[[t.time - k + 1]]
+      ps.ratio.obs[index,k] <- ps.ratio[[k]]
+      mu.a0.obs[index,k] <- mu.a0.total[[t.time - k + 1]]
+    }
+    pi.a0.cum <- cbind(1, t(apply(pi.a0.obs, 1, cumprod)))
+    pi.a0.cum <- ifelse(pi.a0.cum == 0, 2, pi.a0.cum)
+    mu.a0.obs[index.complete, t.time + 1] <- data[index.complete,y.name[t.time]]
+    pi.a1.obs <- cbind(1, pi.a1.obs)
+
+    # recode: cumulative probability (using all observed),
+    # sum.part2 / sum.part.seq
+    sum.part2 <- rep(0, n)
+    sum.part.seq <- list()
+    sum.part.seq.long <- matrix(0, nrow = n, ncol = t.time)
+    mu.diff <- matrix(0, nrow = n, ncol = t.time)
+    for(k in 1:t.time){
+      sum.part2 <- pi.a0.cum[,k]*(1 - pi.a1.obs[,k+1])*ps.ratio.obs[,k] + sum.part2
+      sum.part.seq[[k]] <- sum.part2
+      mu.diff[,k] <- mu.a0.obs[,t.time - k + 2] - mu.a0.obs[,t.time - k + 1]
+    }
+
+    sum.part4 <- rep(0, n)
+    for(k in 1:t.time){
+      fourth_part <- w.cal[,k+1]*(sum.part.seq[[k]] - 1)*mu.diff[,t.time - k + 1]
+      sum.part4 <- fourth_part + sum.part4
+    }
+    fourth_part <- sum.part4
+
+    point_value <- sum(first_part) + mean(second_part) + sum(fourth_part)
+    var_value <- mean((n*first_part + second_part + n*fourth_part - point_value)^2)/n
+
+    return(list(point_value = point_value,
+                var_value = var_value))
+  }
+
   est <- NULL
   ve <- NULL
   if("mr" %in% type){
@@ -738,6 +822,60 @@ jtr.longi <- function(formula.ps, formula.rp, formula.om, formula.pm,
     est <- c(est, res$point_value)
     ve <- c(ve, res$var_value)
     names(ve)[length(ve)] <- "mr.norm"
+  }
+
+  if("mr.cal" %in% type){
+    if(is.null(list.cal)){
+      stop("For calibration-based estimators, need to specify `mat.cal`")
+    }
+    g_whole_mat <- data.matrix(list.cal[[1]])
+    tilde_g <- colMeans(g_whole_mat)
+
+    # (2) For ps
+    g1_mat <- g_whole_mat[a == 1,]
+    g0_mat <- g_whole_mat[a == 0,]
+    index.a0 <- which(a == 0)
+
+    weight_fn <- function(g_mat, tilde_g){
+      opt_fn <- function(lambda){
+        first_part <- as.vector(exp(g_mat%*%lambda) + 1)/sum(exp(g_mat%*%lambda) + 1)
+        colSums(first_part*g_mat) - tilde_g
+      }
+      set.seed(1234)
+      ini_lambda <- matrix(rnorm(length(tilde_g)*10,0,0.5),nrow = 10)
+      temp <- nleqslv::searchZeros(ini_lambda, opt_fn)
+      ind_temp <- 1
+
+      w <- temp$x[ind_temp,]
+      deno <- apply(g_mat, 1, function(x) exp(sum(w*x)))
+      num <- sum(deno)
+      res <- deno/num
+      return(res)
+    }
+
+    w.cal <- matrix(0, nrow = n, ncol = t.time + 1)
+
+    w1_cal <- weight_fn(g1_mat, tilde_g)
+    w.cal[a == 1,1] <- w1_cal
+    w0_cal <- weight_fn(g0_mat, tilde_g)
+    w0.cal.total <- rep(0, n)
+    w0.cal.total[index.a0] <- w0_cal
+    wr.cal.marginal <- rep(1, n)
+    for(k in 1:t.time){
+      index.r <- which(r.mat[,k+1] == 1)
+      gr_mat <- list.cal[[k+1]]
+      tilde_g.adj <- colMeans(gr_mat[r.mat[,k] == 1,])
+      wr.cal <- weight_fn(gr_mat[index.r,], tilde_g.adj)
+      wr.cal.total <- rep(0, n)
+      wr.cal.total[index.r] <- wr.cal
+      wr.cal.marginal <- wr.cal.total*wr.cal.marginal
+      w.cal[,k+1] <- w0.cal.total*wr.cal.marginal/sum(w0.cal.total*wr.cal.marginal)
+    }
+    res <- mr_weight_est(w.cal, pm.a1, mu.a0.total,pi.a0.total, pi.a1.total,
+                         ps.ratio)
+    est <- c(est, res$point_value)
+    ve <- c(ve, res$var_value)
+    names(ve)[length(ve)] <- "mr.cal"
   }
 
   if("rppm" %in% type){
