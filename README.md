@@ -22,13 +22,13 @@ devtools::install_github("siyi48/mrJ2R")
 #> Downloading GitHub repo siyi48/mrJ2R@HEAD
 #> 
 #> ── R CMD build ─────────────────────────────────────────────────────────────────
-#> * checking for file ‘/private/var/folders/9h/trht1flx5gj0n8ntb4n7jlr40000gn/T/Rtmp42u6oT/remotesd02e9d431c/siyi48-mrJ2R-4a517cd/DESCRIPTION’ ... OK
+#> * checking for file ‘/private/var/folders/9h/trht1flx5gj0n8ntb4n7jlr40000gn/T/RtmpZd78I8/remotes1f2759e1441d/siyi48-mrJ2R-5f43eb7/DESCRIPTION’ ... OK
 #> * preparing ‘mrJ2R’:
 #> * checking DESCRIPTION meta-information ... OK
 #> * checking for LF line-endings in source and make files and shell scripts
 #> * checking for empty or unneeded directories
 #> * building ‘mrJ2R_0.0.0.9000.tar.gz’
-#> Installing package into '/private/var/folders/9h/trht1flx5gj0n8ntb4n7jlr40000gn/T/RtmpWEgabZ/temp_libpath42157de83a8'
+#> Installing package into '/private/var/folders/9h/trht1flx5gj0n8ntb4n7jlr40000gn/T/Rtmp1zjFLn/temp_libpath199a63b161de'
 #> (as 'lib' is unspecified)
 ```
 
@@ -86,18 +86,35 @@ formula.pm[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
   x5 + gam::s(y1)
 formula.pm[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
 
+# create a list of matrices for calibration
+k <- 5
+inter_mat <- matrix(0, nrow = nrow(data), ncol = choose(k-1, 2)+k-1)
+count <- 1
+for(i in 1:(k-1)){
+  for(j in i:(k-1)){
+    inter_mat[,count] <- data[,k+i]*data[,k+j]
+    count <- count + 1
+  }
+}
+list.cal <- list()
+list.cal[[1]] <- cbind(data.matrix(data[,k + 1:k]), inter_mat) # A
+list.cal[[2]] <- cbind(cbind(list.cal[[1]], data$a)) # R1
+list.cal[[3]] <- cbind(list.cal[[2]], data$y1,
+                       data.matrix(data[,k + 1:(k-1)])*data$y1, data$y1^2) # R2
+
 res.longi <- jtr.longi(formula.ps = formula.ps,
                        formula.rp = formula.rp,
                        formula.om = formula.om,
                        formula.pm = formula.pm,
+                       list.cal = list.cal,
                        data = data,
-                       type = c("mr", "mr.norm", "rppm"))
+                       type = c("mr", "mr.cal", "rppm"))
 res.longi
 #> $est
-#>       mr  mr.norm     rppm 
-#> 1.189793 1.182700 1.253247 
+#>        mr    mr.cal      rppm 
+#> 1.1897930 0.9718653 1.2532465 
 #> 
 #> $ve
-#>         mr    mr.norm 
-#> 0.03732851 0.03805168
+#>         mr     mr.cal 
+#> 0.03732851 0.02691107
 ```

@@ -75,11 +75,28 @@ formula.pm[[2]] <- y2 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) +
   x5 + gam::s(y1)
 formula.pm[[1]] <- y1 ~ gam::s(x1) + gam::s(x2) + gam::s(x3) + gam::s(x4) + x5
 
+# create a list of matrices for calibration
+k <- 5
+inter_mat <- matrix(0, nrow = nrow(data), ncol = choose(k-1, 2)+k-1)
+count <- 1
+for(i in 1:(k-1)){
+  for(j in i:(k-1)){
+    inter_mat[,count] <- data[,k+i]*data[,k+j]
+    count <- count + 1
+  }
+}
+list.cal <- list()
+list.cal[[1]] <- cbind(data.matrix(data[,k + 1:k]), inter_mat) # A
+list.cal[[2]] <- cbind(cbind(list.cal[[1]], data$a)) # R1
+list.cal[[3]] <- cbind(list.cal[[2]], data$y1,
+                       data.matrix(data[,k + 1:(k-1)])*data$y1, data$y1^2) # R2
+
 res.longi <- jtr.longi(formula.ps = formula.ps,
                        formula.rp = formula.rp,
                        formula.om = formula.om,
                        formula.pm = formula.pm,
+                       list.cal = list.cal,
                        data = data,
-                       type = c("mr", "mr.norm", "rppm"))
+                       type = c("mr", "mr.cal", "rppm"))
 res.longi
 ```
